@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hands-on Certification Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: exam-blueprint report. Verdict up top, scored ranking, timeline, gap map, skip list, sources. Dark-first. */
+:root{
+  --bg:#0d1117; --panel:#151c26; --line:#263243; --fg:#e4e9f0; --muted:#8d9bb0;
+  --accent:#4cc2e0; --amber:#f0b45a; --good:#5fcf96; --bad:#e2766b; --track:#1d2633;
+  --display:"Sora",system-ui,sans-serif; --body:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){
+  --bg:#f5f7fa; --panel:#ffffff; --line:#d7dee8; --fg:#131a24; --muted:#56637a;
+  --accent:#0a7fa0; --amber:#a8620b; --good:#1d8a55; --bad:#b4433a; --track:#e6ebf2; color-scheme:light}}
+:root[data-theme="light"]{
+  --bg:#f5f7fa; --panel:#ffffff; --line:#d7dee8; --fg:#131a24; --muted:#56637a;
+  --accent:#0a7fa0; --amber:#a8620b; --good:#1d8a55; --bad:#b4433a; --track:#e6ebf2; color-scheme:light}
+body{background:var(--bg);color:var(--fg);font:15px/1.6 var(--body)}
+.wrap{max-width:1040px;margin:0 auto;padding-block:40px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:48px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.2}
+h1{font-size:clamp(28px,4.4vw,42px)}
+h2{font-size:22px}
+h3{font-size:16px}
+p{margin:0;max-width:68ch}
+.eyebrow{font:500 12px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.muted{color:var(--muted)}
+section{display:grid;gap:18px}
+.head{display:grid;gap:14px}
+.verdict{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.vcard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;display:grid;gap:6px;align-content:start}
+.vcard .n{font:500 12px var(--mono);color:var(--amber)}
+.vcard b{font-family:var(--display);font-size:17px}
+.vcard span{color:var(--muted);font-size:14px}
+.note{border-left:3px solid var(--amber);padding:10px 14px;background:var(--panel);border-radius:0 8px 8px 0;max-width:none}
+/* ranking chart */
+.rank{display:grid;gap:10px}
+.row{display:grid;grid-template-columns:minmax(150px,230px) 1fr 52px;gap:12px;align-items:center}
+.row .name{font-weight:600;font-size:14px;min-width:0}
+.row .name small{display:block;font:400 12px var(--mono);color:var(--muted)}
+.bar{height:16px;background:var(--track);border-radius:4px;overflow:hidden;display:flex}
+.bar i{display:block;height:100%}
+.row .sc{font:500 14px var(--mono);text-align:right;font-variant-numeric:tabular-nums}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:2px;display:inline-block}
+.c1{background:var(--accent)} .c2{background:var(--amber)} .c3{background:var(--good)} .c4{background:#8f7fe0} .c5{background:#d68fb8}
+.row.dim .name,.row.dim .sc{color:var(--muted)}
+.row.dim .bar i{opacity:.45}
+@media (max-width:560px){.row{grid-template-columns:1fr 44px}.row .name{grid-column:1/-1}}
+/* tables */
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;min-width:760px;font-size:14px}
+th,td{padding:10px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+th{font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--panel)}
+tr:last-child td{border-bottom:0}
+td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pill{display:inline-block;font:500 11px var(--mono);padding:2px 8px;border-radius:99px;border:1px solid currentColor;white-space:nowrap}
+.p-go{color:var(--good)} .p-later{color:var(--amber)} .p-skip{color:var(--bad)} .p-watch{color:var(--accent)}
+.tag{font:500 11px var(--mono);color:var(--muted)}
+/* timeline */
+.gantt{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.g{display:grid;grid-template-columns:170px repeat(18,minmax(34px,1fr));min-width:820px;font-size:12px}
+.g>div{border-bottom:1px solid var(--line);padding:8px 6px;min-height:20px}
+.g .wk{font:500 10px var(--mono);color:var(--muted);text-align:center;border-left:1px solid var(--line)}
+.g .lab{font-weight:600;font-size:13px}
+.g .lab small{display:block;font:400 11px var(--mono);color:var(--muted)}
+.g .blk{border-radius:5px;margin:4px 2px;padding:4px 8px;font:500 11px var(--mono);color:#0d1117;align-self:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.g .off{background:repeating-linear-gradient(45deg,var(--track),var(--track) 4px,transparent 4px,transparent 8px);border-radius:5px;margin:4px 2px}
+/* gap cards */
+.gaps{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.gap{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;display:grid;gap:8px;align-content:start}
+.gap ul{margin:0;padding-left:18px;color:var(--muted);font-size:14px}
+.gap li{margin:2px 0}
+.cost{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.cost div{border-top:2px solid var(--line);padding-top:10px}
+.cost b{display:block;font:500 24px var(--mono);font-variant-numeric:tabular-nums}
+.cost span{font-size:13px;color:var(--muted)}
+ol.steps{margin:0;padding-left:20px;display:grid;gap:8px;max-width:72ch}
+.src{font-size:13px;color:var(--muted)}
+.src a{color:var(--accent)}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<header class="head">
+  <div class="eyebrow">Market research · 24 Oct 2026 · Alejandro Luna</div>
+  <h1>Three hands-on certifications that fit your two tracks, in the order that pays back fastest</h1>
+  <p class="muted">Scope: freelance AI Engineer and Senior Software Engineer (Java/Spring, TypeScript/Node) on the NL/EU contract market at 100+ EUR/h. No management or coaching certifications. Facts carry a status: <b>CONFIRMED</b> from an official or exam page, <b>VALIDATE</b> where I could only find second-hand figures.</p>
+</header>
+
+<section>
+  <div class="verdict">
+    <div class="vcard"><span class="n">1 · by Fri 20 Nov</span><b>AWS Generative AI Developer – Professional</b><span>AIP-C01, USD 300. New, rare, and it is your AI Engineer job description as an exam. Builds on the AWS study you already started.</span></div>
+    <div class="vcard"><span class="n">2 · by Fri 11 Dec</span><b>CKAD, renewed</b><span>USD 445, often discounted around Black Friday. Hands-on in a live cluster, you passed it in 2020, and it repairs the "expired" line on your CV.</span></div>
+    <div class="vcard"><span class="n">3 · by Fri 26 Feb 2027</span><b>Oracle Java SE 21 Developer (OCP)</b><span>1Z0-830, about USD 245. Moves your public Java from 8/11 to 21 and drills exactly what senior Java interviews probe.</span></div>
+  </div>
+  <p class="note">The honest frame: at 100+ EUR/h in the Netherlands, a certification rarely wins the contract on its own. It gets your CV past broker keyword filters and public-tender "wensen" lists, and it gives you a reason to master the topics interviewers ask. Your portfolio repos and interviews still close the deal, so cap study at about 2 of your 6 focused hours a day and keep the job search first.</p>
+</section>
+
+<section>
+  <div class="eyebrow">Ranking</div>
+  <h2>Weighted score out of 5</h2>
+  <p class="muted">Market demand 30%, rarity 20%, fit and speed for your background 20%, cost 10% (cheaper scores higher), long-term value 20%. Each segment is that criterion's weighted points, so the bar length is the total.</p>
+  <div class="legend">
+    <span><i class="c1"></i>Demand</span><span><i class="c2"></i>Rarity</span><span><i class="c3"></i>Fit &amp; speed</span><span><i class="c4"></i>Cost</span><span><i class="c5"></i>Long-term</span>
+  </div>
+  <div class="rank" id="rank"></div>
+  <p class="src">Azure AI-103 scores second but sits fourth in the plan: its value depends on Azure showing up in your actual leads, and Microsoft renames these exams almost yearly. CKAD and OCP 21 serve both tracks whatever cloud a client uses.</p>
+  <p class="src">Claude Certified Architect would score about 4.0, but it is shown dimmed because in Oct 2026 the exams are open only to Claude Partner Network organisations (VALIDATE before planning on it).</p>
+</section>
+
+<section>
+  <div class="eyebrow">Details</div>
+  <h2>What each exam is, costs and proves</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Certification</th><th>Verdict</th><th>Price</th><th>Format</th><th>Prep for you</th><th>Valid</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td><b>AWS Certified Generative AI Developer – Professional</b><br><span class="tag">AIP-C01</span></td><td><span class="pill p-go">Do now</span></td><td class="num">USD 300</td><td>85 questions, 170 min, ~72% to pass</td><td class="num">4–5 wks</td><td class="num">3 yrs</td><td>Bedrock, RAG, agents, guardrails, evals, cost tuning. Few holders yet because the exam is new. Answers "do you know AWS?" for the Huxley-type leads.</td></tr>
+      <tr><td><b>Certified Kubernetes Application Developer</b><br><span class="tag">CKAD</span></td><td><span class="pill p-go">Do now</span></td><td class="num">USD 445<br><span class="tag">1 free retake</span></td><td>~2 h in a real cluster, command line, ~66% to pass</td><td class="num">3 wks</td><td class="num">2–3 yrs <span class="tag">VALIDATE</span></td><td>Pure hands-on, impossible to fake, wanted on both tracks. A renewal is cheap prep for you and turns an expired cert into a current one.</td></tr>
+      <tr><td><b>Oracle Certified Professional: Java SE 21 Developer</b><br><span class="tag">1Z0-830</span></td><td><span class="pill p-go">Do next</span></td><td class="num">~USD 245 <span class="tag">VALIDATE</span></td><td>50 questions, 120 min, 68% to pass, online only</td><td class="num">8 wks</td><td class="num">No expiry</td><td>Hard and tricky, so it is respected. Covers records, sealed types, pattern matching, virtual threads, streams, concurrency: the modern-Java questions you can't answer from Java 8/11 experience.</td></tr>
+      <tr><td><b>Azure AI App and Agent Developer Associate</b><br><span class="tag">AI-103 (replaced AI-102, Jun 2026)</span></td><td><span class="pill p-later">If leads ask</span></td><td class="num">~USD 165 <span class="tag">VALIDATE</span></td><td>Multiple choice and labs, Microsoft Foundry, multi-agent</td><td class="num">3 wks</td><td class="num">1 yr, free renewal</td><td>Dutch banks, insurers and government lean on Azure. Take it only if two or more real leads ask for Azure, because Microsoft renames these exams often.</td></tr>
+      <tr><td><b>Certified Kubernetes Security Specialist</b><br><span class="tag">CKS, needs a valid CKA</span></td><td><span class="pill p-later">2027</span></td><td class="num">USD 445 + CKA <span class="tag">VALIDATE</span></td><td>Hands-on, hard</td><td class="num">10+ wks</td><td class="num">2 yrs</td><td>Rare and well paid in platform roles, but it needs CKA first and pulls you towards DevOps rather than your two tracks.</td></tr>
+      <tr><td><b>Claude Certified Architect</b><br><span class="tag">CCA-F / CCA-P</span></td><td><span class="pill p-watch">Watch</span></td><td class="num">Not published</td><td>Proctored, Pearson VUE</td><td class="num">2 wks</td><td class="num">?</td><td>Perfect fit for what you build and very rare, but partner-only today. If a client or employer is a Claude partner, ask them to sponsor it.</td></tr>
+      <tr><td><b>AWS Solutions Architect – Associate</b></td><td><span class="pill p-later">Optional</span></td><td class="num">~USD 150</td><td>Multiple choice</td><td class="num">3 wks</td><td class="num">3 yrs</td><td>Most requested AWS cert, so it gives no rarity. Useful only as a warm-up if AIP-C01 practice scores stay under 70%.</td></tr>
+      <tr><td><b>Databricks Generative AI Engineer Associate</b></td><td><span class="pill p-skip">Skip for now</span></td><td class="num">USD 200</td><td>45 questions, 90 min</td><td class="num">3 wks</td><td class="num">2 yrs</td><td>Good exam, but it pays only in data-platform shops. Revisit if a Databricks lead appears.</td></tr>
+      <tr><td><b>Spring Certified Professional</b><br><span class="tag">2V0-72.22</span></td><td><span class="pill p-skip">Skip</span></td><td class="num">–</td><td>60 questions, 130 min</td><td class="num">–</td><td class="num">–</td><td>Its exam guide still covers Spring Boot 2.5 and Framework 5.3. Your Spring Boot 4 portfolio repo proves more.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <div class="eyebrow">Plan</div>
+  <h2>Week by week, 26 Oct 2026 to 26 Feb 2027</h2>
+  <p class="muted">About 2 hours a day, Monday to Friday, never Saturdays. Kerstvakantie (19 Dec–3 Jan) stays free. Each block ends in a booked exam date, because a date on the calendar is what makes the study happen.</p>
+  <div class="gantt"><div class="g" id="gantt"></div></div>
+</section>
+
+<section>
+  <div class="eyebrow">Interview gaps</div>
+  <h2>What each exam fixes in your interviews</h2>
+  <div class="gaps">
+    <div class="gap"><h3>AIP-C01 · AI Engineer interviews</h3><ul>
+      <li>"How would you run this on AWS?" Bedrock, Knowledge Bases, Agents, Lambda, IAM.</li>
+      <li>RAG design trade-offs: chunking, embeddings, retrieval evaluation.</li>
+      <li>Guardrails, PII masking, prompt-injection defence: the governance questions banks ask.</li>
+      <li>Cost and latency tuning: caching, model choice, batching.</li>
+      <li>The micro1 lesson: talk about your own code concretely. Pair each domain with the matching part of invoice-intake-api or payment-disputes.</li>
+    </ul></div>
+    <div class="gap"><h3>CKAD · both tracks</h3><ul>
+      <li>"How does this run in production?" Deployments, probes, resources, rollouts.</li>
+      <li>Config and secrets, ConfigMaps vs Secrets, service accounts.</li>
+      <li>Debugging a broken pod live, which is what a pairing interview looks like.</li>
+      <li>Helm and Kustomize basics, NetworkPolicy.</li>
+    </ul></div>
+    <div class="gap"><h3>OCP Java 21 · Senior Java interviews</h3><ul>
+      <li>Records, sealed interfaces, switch pattern matching.</li>
+      <li>Virtual threads vs platform threads, structured concurrency basics.</li>
+      <li>Streams and collectors edge cases, Optional, generics.</li>
+      <li>Concurrency, immutability, equals/hashCode: the classic senior traps.</li>
+      <li>Lets you write "Java 21" on the CV without the honesty caveat.</li>
+    </ul></div>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">How to study with Claude as your tutor</div>
+  <h2>A loop that works for exams and interviews at once</h2>
+  <ol class="steps">
+    <li><b>Map the official exam guide</b> into a checklist (AWS and Oracle publish domain lists, CNCF publishes the CKAD curriculum).</li>
+    <li><b>One domain a day:</b> a Spanish "para niños" explanation, then a 20-question quiz in the real exam style, then explain your wrong answers back in English.</li>
+    <li><b>Build, don't read:</b> for CKAD, run every task on a local kind or minikube cluster against the clock; for AIP-C01, add a small Bedrock variant to a portfolio repo; for Java 21, write the code for every trap question.</li>
+    <li><b>Paid mocks as the gate:</b> Tutorials Dojo for AIP-C01, the two killer.sh sessions included with CKAD, Enthuware for OCP. Book the exam once you score 80% twice.</li>
+    <li><b>Every Friday:</b> a 20-minute mock interview in English on that week's domains.</li>
+  </ol>
+</section>
+
+<section>
+  <div class="eyebrow">Money and time</div>
+  <h2>What the core three cost</h2>
+  <div class="cost">
+    <div><b>~USD 990</b><span>List price for AIP-C01, CKAD and OCP 21</span></div>
+    <div><b>~USD 860</b><span>If CKAD is bought in a Linux Foundation sale at about 30% off (typical, VALIDATE)</span></div>
+    <div><b>~USD 100</b><span>Practice exams (Tutorials Dojo, Enthuware); killer.sh comes with CKAD</span></div>
+    <div><b>~15 wks</b><span>Of 2 h/day, finishing 26 Feb 2027</span></div>
+  </div>
+  <p class="muted">Exam fees are business expenses for your ZZP; check deductibility with your bookkeeper.</p>
+</section>
+
+<section>
+  <div class="eyebrow">Left out on purpose</div>
+  <h2>Certifications not worth your money now</h2>
+  <p>Scrum, SAFe, PMP, ITIL and other management credentials (you asked for the opposite, and PSM II already covers agile). Fundamentals exams such as AWS AI Practitioner or Azure AI-901 read as junior on a 15-year profile. Vendor "AI badges" from free online courses are fine to collect but carry no recruiter weight.</p>
+</section>
+
+<section class="src">
+  <div class="eyebrow">Sources (checked 24 Oct 2026)</div>
+  <p><a href="https://www.cncf.io/certification/CKAd/">CNCF: CKAD</a> (price, format, retake) · <a href="https://sailor.sh/blog/ckad-exam-guide-2026/">Sailor.sh CKAD 2026 guide</a> (pass mark, prep time) · <a href="https://certland.net/blog/aws-certified-generative-ai-developer-professional-aip-c01-study-guide-2026/">Certland AIP-C01 guide</a> (price, length, domains) · <a href="https://devjava.substack.com/p/my-experience-taking-the-java-se">Taking the Java SE 21 exam</a> (format, pass mark, prep) · <a href="https://vladtalkstech.com/microsoft-learning-and-credential-news/microsoft-certification-retirements-2026/">Microsoft retirements 2026</a> (AI-102 to AI-103) · <a href="https://claudelog.com/faqs/what-are-claude-certifications/">ClaudeLog: Claude certifications</a> (partner-only) · <a href="https://www.databricks.com/learn/certification/genai-engineer-associate">Databricks GenAI Engineer</a> · <a href="https://docs.broadcom.com/doc/vmw-spring-professional-develop-exam-guide">Broadcom Spring Professional exam guide</a>.</p>
+  <p>Scores are my judgement from these sources and the NL contract leads we have seen this month, not survey data.</p>
+</section>
+
+</div>
+
+<script>
+const W={d:.3,r:.2,f:.2,c:.1,l:.2};
+const certs=[
+ ["AWS GenAI Developer Pro","AIP-C01",4,5,4,4,4],
+ ["Azure AI App & Agent Dev","AI-103",4,4,4,5,3],
+ ["CKAD (renew)","CNCF",4,3,5,2,4],
+ ["OCP Java SE 21","1Z0-830",3,4,3,4,5],
+ ["AWS Solutions Architect Assoc.","SAA",5,1,4,5,3],
+ ["CKS","CNCF, needs CKA",3,5,2,2,4],
+ ["Databricks GenAI Engineer","Associate",2,3,4,4,2],
+ ["Spring Professional","2V0-72.22",2,2,3,4,1],
+ ["Claude Certified Architect","partner-only",3,5,5,3,4,true]
+];
+const cls=["c1","c2","c3","c4","c5"],keys=["d","r","f","c","l"];
+const rank=document.getElementById("rank");
+certs.map(c=>({c,t:keys.reduce((s,k,i)=>s+W[k]*c[2+i],0)}))
+ .sort((a,b)=>(a.c[7]?1:0)-(b.c[7]?1:0)||b.t-a.t)
+ .forEach(({c,t})=>{
+  const row=document.createElement("div");row.className="row"+(c[7]?" dim":"");
+  const segs=keys.map((k,i)=>`<i class="${cls[i]}" style="width:${W[k]*c[2+i]/5*100}%" title="${k}: ${c[2+i]}/5"></i>`).join("");
+  row.innerHTML=`<div class="name">${c[0]}<small>${c[1]}</small></div><div class="bar" role="img" aria-label="${c[0]} ${t.toFixed(1)} of 5">${segs}</div><div class="sc">${t.toFixed(1)}</div>`;
+  rank.appendChild(row);
+ });
+const weeks=["26 Oct","2 Nov","9 Nov","16 Nov","23 Nov","30 Nov","7 Dec","14 Dec","21 Dec","28 Dec","4 Jan","11 Jan","18 Jan","25 Jan","1 Feb","8 Feb","15 Feb","22 Feb"];
+const g=document.getElementById("gantt");
+let h='<div></div>'+weeks.map(w=>`<div class="wk">${w}</div>`).join("");
+const rows=[
+ ["AIP-C01","exam Fri 20 Nov",1,4,"var(--accent)","Bedrock, RAG, agents, evals"],
+ ["CKAD","buy in Black Friday sale; exam Fri 11 Dec",5,7,"var(--good)","kubectl drills, killer.sh"],
+ ["Kerstvakantie","no study",9,10,null,""],
+ ["OCP Java 21","exam Fri 26 Feb",11,18,"var(--amber)","Java 21 study guide + Enthuware"],
+ ["AI-103","only if Azure leads appear",null,null,null,""]
+];
+rows.forEach(([n,s,a,b,col,txt])=>{
+ h+=`<div class="lab">${n}<small>${s}</small></div>`;
+ if(a===null){h+=`<div style="grid-column:span 18" class="muted">Optional block in March 2027</div>`;return;}
+ if(a>1)h+=`<div style="grid-column:span ${a-1}"></div>`;
+ h+=col?`<div class="blk" style="grid-column:span ${b-a+1};background:${col}">${txt}</div>`:`<div class="off" style="grid-column:span ${b-a+1}"></div>`;
+ if(b<18)h+=`<div style="grid-column:span ${18-b}"></div>`;
+});
+g.innerHTML=h;
+</script>
+</body>
+</html>

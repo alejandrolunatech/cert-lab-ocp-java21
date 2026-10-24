@@ -1,0 +1,54 @@
+01-values/01-int-overflow	`big + 1` is int arithmetic and wraps to Integer.MIN_VALUE before the widening to long. `big + 1L` is long arithmetic. `(byte) 200` keeps the low 8 bits: 200 - 256 = -56.
+01-values/02-string-pool	`"ja" + "va"` is a compile-time constant, so it is the same pooled object. `part + "va"` is built at runtime (part is not final). `intern()` returns the pooled instance.
+01-values/03-stringbuilder	StringBuilder methods change the builder and return it, so the chain applies: `a-bcde` reversed is `edcb-a`. String methods return new strings that are thrown away; `s` stays `abc`.
+01-values/04-text-block	Incidental indentation is stripped by the least-indented line. `\` at line end joins the next line, so `b` and `c` share a line. The closing delimiter on its own line adds a final newline.
+01-values/05-local-date	`plusDays` returns a new date that is ignored. Adding a month to 31 January clamps to the last valid day: 2024-02-29 (2024 is a leap year).
+01-values/06-duration-period	Period keeps the fields as given (P1Y14M) until `normalized()` folds months into years. Duration prints hours and minutes: PT1H30M.
+01-values/07-integer-cache	Autoboxing uses `Integer.valueOf`, which caches -128..127. 128 creates two objects, so `==` compares references and is false. Always use `equals` for wrappers.
+01-values/08-math-rounding	Integer division truncates. The sign of `%` follows the dividend. `Math.round` is floor(x + 0.5): -2.5 becomes -2 and 2.5 becomes 3. A cast to int truncates toward zero.
+02-flow/01-switch-expression	Arrow cases never fall through. A block needs `yield` to produce the value of the switch expression.
+02-flow/02-fallthrough	Colon cases fall through until a `break`. Case 1 runs, then case 2, then breaks.
+02-flow/03-pattern-switch-order	`case String s` can never match because `CharSequence cs` above it already covers every String. The compiler rejects a dominated label.
+02-flow/04-switch-null	Since Java 21, `case null` is allowed. Without it, a null selector throws NullPointerException.
+02-flow/05-guarded-pattern	Guarded cases are tried in order. The switch needs no default because the sealed interface's permitted types are all covered (exhaustive).
+02-flow/06-labeled-break	For i = 0 and i = 1, j = 0 and 1 count (4 total) and j = 2 continues the outer loop. At i = 2, j = 0 breaks out.
+02-flow/07-instanceof-pattern	Flow scoping: after `if (!(o instanceof String s)) return;` the compiler knows `s` is definitely assigned for the rest of the method.
+03-oop/01-init-order	Static initializers run once, parent first, when the class is first used. For every object: parent instance initializers and constructor, then child's.
+03-oop/02-record-compact	A compact constructor works on the parameters; the fields are assigned after its body, so swapping the parameters swaps the stored values. Records get value-based `equals` and a `toString` like `Range[lo=2, hi=5]`.
+03-oop/03-record-field	A record may declare static fields but no extra instance fields: its state is exactly its components.
+03-oop/04-polymorphism-fields	Method calls dispatch on the runtime type; field access uses the declared type. `B.name` hides `A.name` rather than overriding it.
+03-oop/05-sealed-permits	Every permitted subtype of a sealed type must be declared `final`, `sealed` or `non-sealed`. `Bike` declares none.
+03-oop/06-enum-methods	Each constant can override an abstract method. `ordinal()` is the zero-based position.
+03-oop/07-interface-default-conflict	When two interfaces provide the same default method, the class must override it, and can call a specific one with `Interface.super.method()`.
+03-oop/08-overload-resolution	The compiler tries, in order: exact or widening primitive match, then boxing, then varargs. `int` widens to `long` before it would box to `Integer`.
+04-exceptions/01-finally-return	`finally` always runs. A `return` in finally replaces the pending return value (and would swallow an exception). Legal, but a code smell.
+04-exceptions/02-try-with-resources	Resources close in reverse order (b, then a) before the catch runs. The body's exception is primary; both close exceptions are added as suppressed.
+04-exceptions/03-multicatch	Types in a multi-catch may not be subclasses of each other: FileNotFoundException is an IOException, so the compiler rejects it.
+04-exceptions/04-unreachable-catch	A checked exception can only be caught if the try block can throw it. `Exception` and unchecked exceptions are exempt from this rule.
+04-exceptions/05-cast-in-try	The cast throws ClassCastException, a RuntimeException, which is caught; finally runs afterwards.
+05-collections/01-list-of-immutable	`List.of`, `Set.of` and `Map.of` are unmodifiable: every mutator throws UnsupportedOperationException. They also reject nulls.
+05-collections/02-arrays-aslist	`Arrays.asList` is backed by the array: writes go both ways. `set` works; `add` and `remove` would throw.
+05-collections/03-sequenced	Java 21 added SequencedCollection and SequencedMap: `addFirst`, `getFirst`, `reversed()` (a view), `putFirst`, `firstEntry`, `sequencedKeySet`.
+05-collections/04-treemap-navigation	`floorKey` is the greatest key <= the argument; `ceilingKey` the smallest >=. `headMap(k)` excludes k; `tailMap(k, true)` includes it.
+05-collections/05-remove-int	`remove(1)` picks the `remove(int index)` overload and removes 20. `remove(Integer.valueOf(1))` removes the element equal to 1.
+05-collections/06-comparator-chain	`reversed()` applies to everything before it in the chain (age descending); `thenComparing` breaks ties by name ascending.
+05-collections/07-hashset-mutable-key	The list's hashCode changed after insertion, so the set looks in the wrong bucket. Never mutate keys of hash-based collections.
+06-streams/01-lazy	Nothing runs until a terminal operation. Elements flow one by one, and `findFirst` short-circuits after 2.
+06-streams/02-reuse	A stream that has been consumed by a terminal operation throws IllegalStateException when used again.
+06-streams/03-grouping	The three-argument `groupingBy` takes a map factory (TreeMap keeps keys sorted) and a downstream collector. `partitioningBy` always has both keys, false first.
+06-streams/04-tomap-duplicate	Two keys of length 2 collide and `toMap` without a merge function throws IllegalStateException. Pass `(a, b) -> a + b` or similar as the third argument.
+06-streams/05-reduce	The identity is used once in a sequential reduce: 10 + 1 + 2 + 3 + 4. The one-argument `reduce` returns an Optional. `range` excludes the end; `rangeClosed` includes it.
+06-streams/06-flatmap-optional	`flatMap` avoids `Optional<Optional<String>>`. An empty Optional skips `map` and falls to `orElse`.
+06-streams/07-effectively-final	A lambda can only use local variables that are final or effectively final. Use a reduction such as `mapToInt(i -> i).sum()` instead.
+07-modules/01-describe	Code on the class path lives in the unnamed module. JDK classes live in named modules: String is in `java.base`, which every module reads implicitly.
+08-concurrency/01-virtual-threads	Each task gets its own virtual thread; sleeping unmounts it from its carrier. ExecutorService is AutoCloseable since Java 19 and `close()` waits for tasks. `main` itself runs on a platform thread.
+08-concurrency/02-atomic-vs-plain	`incrementAndGet` is atomic, so no update is lost. With a plain `int count++` the result could be lower than 1000.
+08-concurrency/03-completablefuture	`thenCombine` joins two futures. In `handle` the exception arrives wrapped in a CompletionException, so `getCause()` is the original.
+08-concurrency/04-run-vs-start	`run()` executes the Runnable on the calling thread (main). Only `start()` creates a new thread.
+08-concurrency/05-start-twice	Starting a thread that has already been started throws IllegalThreadStateException. `Thread.ofVirtual()` and `Thread.ofPlatform()` are the Java 21 builders.
+09-io/01-path-normalize	`normalize` removes `.` and `name/..`. `relativize` gives the path from base to the target. `getNameCount` counts elements without the root, including `.` and `..` since this path is not normalized.
+09-io/02-files-roundtrip	`Files.write` writes each line with a line separator. APPEND adds to the end. `Files.lines` is lazy and must be closed, hence try-with-resources.
+09-io/03-resolve	`resolve` with an absolute argument returns the argument unchanged. `resolveSibling` replaces the last element.
+10-localization/01-number-format	German uses `.` for thousands and `,` for decimals; the default keeps up to 3 fraction digits. The compact format (Java 12+) rounds to `1M`.
+10-localization/02-date-formatter	`MMM` is the short month name, `MMMM` the full name, `EEEE` the full day name, all in the formatter's locale. `HH` is the 24-hour clock with padding.
+10-localization/03-time-in-pattern	A LocalDate has no hour field, so formatting it with `HH` throws UnsupportedTemporalTypeException (a DateTimeException) at runtime. It compiles fine.
