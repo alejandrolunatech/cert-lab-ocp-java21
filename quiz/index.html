@@ -181,6 +181,7 @@ function mockShow(M){
   <section class="panel">${qHtml(q)}${optsHtml(q, M.orders[M.i], "m", M.ans[M.i])}
   <div class="row"><button id="prev" ${M.i?'':'disabled'}>Previous</button><button id="flag">${M.flags[M.i]?'Unflag':'Flag for review'}</button><button class="primary" id="next">${M.i<M.qs.length-1?'Next':'Review grid'}</button></div></section>`;
   const save = () => { M.ans[M.i] = picked(); };
+  app.querySelectorAll(".opts input").forEach(i => i.onchange = save); // keeps the answer current if the timer runs out
   app.querySelectorAll(".grid button").forEach(b => b.onclick = () => { save(); M.i = +b.dataset.k; mockShow(M); });
   document.getElementById("prev").onclick = () => { save(); M.i--; mockShow(M); };
   document.getElementById("next").onclick = () => { save(); if(M.i<M.qs.length-1) M.i++; mockShow(M); };

@@ -87,8 +87,6 @@ function reset(){
 function step(){
   const IO = Math.max(1, +$("io").value || 6);
   tick++;
-  // parked tasks progress their I/O in parallel
-  tasks.filter(t => t.where === "parked").forEach(t => { if(--t.left <= 0){ t.phase = 2; t.left = 1; t.where = "queue"; } });
   // carriers: fill empty ones from the queue
   for(let c = 0; c < CARRIERS; c++){
     if(!carriers[c]){ const t = tasks.find(t => t.where === "queue"); if(t){ t.where = "carrier"; carriers[c] = t; } }
@@ -100,13 +98,16 @@ function step(){
     if(t.left > 0) continue;
     if(t.phase === 0){
       t.phase = 1; t.left = IO;
-      if(mode === "virt"){ t.where = "parked"; carriers[c] = null; } // unmount
+      if(mode === "virt"){ t.where = "parked"; t.parkedAt = tick; carriers[c] = null; } // unmount
     } else if(t.phase === 1){
       t.phase = 2; t.left = 1;                                         // blocked thread wakes up on its own carrier
     } else {
       t.phase = 3; t.where = "done"; carriers[c] = null;
     }
   }
+  // parked tasks progress their I/O in parallel, from the tick after they unmounted;
+  // a task whose I/O ends here gets its CPU tick next time, so I/O and CPU never share a tick
+  tasks.filter(t => t.where === "parked" && t.parkedAt < tick).forEach(t => { if(--t.left <= 0){ t.phase = 2; t.left = 1; t.where = "queue"; } });
   render();
   if(tasks.every(t => t.phase === 3)){ stop(); results.push({mode, n: tasks.length, io: IO, ticks: tick}); renderBars(); }
 }
