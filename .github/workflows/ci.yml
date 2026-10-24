@@ -1,0 +1,25 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  java:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: every drill matches its answer
+        run: java bin/Drill.java verify
+      - name: kata stubs compile
+        run: ./mvnw -B -q -DskipTests compile
+      - name: kata tests pass against the reference solutions
+        run: ./mvnw -B verify -Psolutions
+      - name: question bank parses
+        run: node -e "global.window={}; require('./quiz/questions.js'); const q=window.QUIZ; for (const x of q.questions) { if(!q.domains.find(d=>d.id===x.domain)||!x.answer.every(a=>a<x.options.length)) { console.error('bad', x.id); process.exit(1);} } console.log(q.questions.length, 'questions ok')"

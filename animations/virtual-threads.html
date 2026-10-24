@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Virtual Threads Simulator</title>
+<style>
+/* Tick model: every task is CPU 1 tick, blocking I/O N ticks, CPU 1 tick. Four carriers or four platform threads. */
+:root{--bg:#0d1117;--panel:#151c26;--line:#263243;--fg:#e4e9f0;--muted:#8d9bb0;--cpu:#4cc2e0;--io:#f0b45a;--pin:#e2766b;--done:#5fcf96;--track:#1d2633;
+--sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;--mono:ui-monospace,Menlo,Consolas,monospace;color-scheme:dark}
+@media (prefers-color-scheme: light){:root{--bg:#f5f7fa;--panel:#fff;--line:#d7dee8;--fg:#131a24;--muted:#56637a;--cpu:#0a7fa0;--io:#a8620b;--pin:#b4433a;--done:#1d8a55;--track:#e6ebf2;color-scheme:light}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 var(--sans)}
+.wrap{max-width:900px;margin:0 auto;padding:28px 16px 60px;display:grid;gap:18px}
+h1{margin:0;font-size:24px} h2{margin:0;font-size:16px} p{margin:0;max-width:70ch}
+.muted{color:var(--muted)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;display:grid;gap:12px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+button{font:inherit;color:var(--fg);background:var(--track);border:1px solid var(--line);border-radius:8px;padding:8px 14px;cursor:pointer}
+button.on{background:var(--cpu);border-color:var(--cpu);color:#0d1117;font-weight:600}
+button:focus-visible,input:focus-visible{outline:2px solid var(--cpu);outline-offset:2px}
+label{font-size:13px;color:var(--muted);display:flex;gap:6px;align-items:center}
+input[type=number]{width:70px;font:inherit;color:var(--fg);background:var(--track);border:1px solid var(--line);border-radius:6px;padding:4px 6px}
+.lanes{display:grid;gap:8px}
+.lane{display:grid;grid-template-columns:110px 1fr;gap:10px;align-items:center;font:500 12px var(--mono)}
+.slot{height:34px;border-radius:6px;background:var(--track);display:flex;align-items:center;padding:0 10px;font:500 12px var(--mono);transition:background .25s}
+.slot.cpu{background:color-mix(in srgb,var(--cpu) 35%,var(--track))}
+.slot.io{background:color-mix(in srgb,var(--io) 35%,var(--track))}
+.slot.pin{background:color-mix(in srgb,var(--pin) 35%,var(--track))}
+.dots{display:flex;flex-wrap:wrap;gap:4px;min-height:14px}
+.dots i{width:12px;height:12px;border-radius:3px;display:block}
+.q i{background:var(--muted)} .p i{background:var(--io)} .d i{background:var(--done)}
+.stats{display:flex;flex-wrap:wrap;gap:24px;font:500 13px var(--mono)}
+.stats b{display:block;font-size:20px}
+.bars{display:grid;gap:6px}
+.bar{display:grid;grid-template-columns:150px 1fr 60px;gap:10px;align-items:center;font:500 12px var(--mono)}
+.bar div{height:12px;background:var(--track);border-radius:4px;overflow:hidden}
+.bar div i{display:block;height:100%;background:var(--cpu)}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:12px;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;background:var(--c)}
+@media (prefers-reduced-motion: reduce){.slot{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Why virtual threads scale blocking code</h1>
+  <p class="muted">Every task does 1 tick of CPU, waits on I/O (a database call, an HTTP request), then does 1 more tick of CPU. A platform thread sits idle during the wait. A virtual thread unmounts from its carrier, so the carrier runs someone else. Unless it is <b>pinned</b>: in Java 21, blocking inside <code>synchronized</code> keeps the carrier busy.</p>
+  <section class="panel">
+    <div class="row">
+      <button id="m-plat">Fixed pool, 4 platform threads</button>
+      <button id="m-virt" class="on">Virtual threads, 4 carriers</button>
+      <button id="m-pin">Virtual, pinned by synchronized</button>
+    </div>
+    <div class="row">
+      <label for="n">tasks <input id="n" type="number" min="4" max="60" value="24"></label>
+      <label for="io">I/O ticks <input id="io" type="number" min="1" max="12" value="6"></label>
+      <button id="run">Run</button><button id="step">One tick</button><button id="reset">Reset</button>
+    </div>
+    <div class="legend"><span style="--c:var(--cpu)">running on CPU</span><span style="--c:var(--io)">waiting on I/O</span><span style="--c:var(--pin)">pinned: carrier blocked</span><span style="--c:var(--done)">done</span></div>
+  </section>
+  <section class="panel">
+    <div class="stats" id="stats"></div>
+    <div class="lanes" id="lanes"></div>
+    <div class="lane"><span>ready queue</span><div class="dots q" id="q"></div></div>
+    <div class="lane"><span>parked (I/O)</span><div class="dots p" id="p"></div></div>
+    <div class="lane"><span>done</span><div class="dots d" id="d"></div></div>
+  </section>
+  <section class="panel">
+    <h2>Ticks to finish, by run</h2>
+    <div class="bars" id="bars"><p class="muted">Run each mode once to compare.</p></div>
+  </section>
+  <p class="muted">In code: <code>Executors.newFixedThreadPool(4)</code> versus <code>Executors.newVirtualThreadPerTaskExecutor()</code>. Kata 04 in this repo makes you write the second one, and drill 08.01 shows 1000 sleeping tasks finishing in about the time of one.</p>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const CARRIERS = 4;
+let mode = "virt", tasks = [], carriers = [], tick = 0, timer = null, results = [];
+const label = {plat: "platform pool", virt: "virtual", pin: "virtual, pinned"};
+function reset(){
+  stop(); tick = 0;
+  const n = Math.max(4, Math.min(60, +$("n").value || 24));
+  tasks = Array.from({length: n}, (_, i) => ({id: i + 1, phase: 0, left: 1, where: "queue"}));
+  carriers = Array.from({length: CARRIERS}, () => null);
+  render();
+}
+// phase 0 = first CPU tick, 1 = I/O, 2 = second CPU tick, 3 = done
+function step(){
+  const IO = Math.max(1, +$("io").value || 6);
+  tick++;
+  // parked tasks progress their I/O in parallel
+  tasks.filter(t => t.where === "parked").forEach(t => { if(--t.left <= 0){ t.phase = 2; t.left = 1; t.where = "queue"; } });
+  // carriers: fill empty ones from the queue
+  for(let c = 0; c < CARRIERS; c++){
+    if(!carriers[c]){ const t = tasks.find(t => t.where === "queue"); if(t){ t.where = "carrier"; carriers[c] = t; } }
+  }
+  // run one tick on each carrier
+  for(let c = 0; c < CARRIERS; c++){
+    const t = carriers[c]; if(!t) continue;
+    t.left--;
+    if(t.left > 0) continue;
+    if(t.phase === 0){
+      t.phase = 1; t.left = IO;
+      if(mode === "virt"){ t.where = "parked"; carriers[c] = null; } // unmount
+    } else if(t.phase === 1){
+      t.phase = 2; t.left = 1;                                         // blocked thread wakes up on its own carrier
+    } else {
+      t.phase = 3; t.where = "done"; carriers[c] = null;
+    }
+  }
+  render();
+  if(tasks.every(t => t.phase === 3)){ stop(); results.push({mode, n: tasks.length, io: IO, ticks: tick}); renderBars(); }
+}
+function render(){
+  $("lanes").innerHTML = carriers.map((t, c) => {
+    let cls = "", txt = "idle";
+    if(t){ const io = t.phase === 1; cls = io ? (mode === "virt" ? "io" : "pin") : "cpu"; txt = `task ${t.id} · ${io ? "blocked on I/O, carrier wasted" : "CPU"}`; }
+    return `<div class="lane"><span>${mode === "plat" ? "thread" : "carrier"} ${c + 1}</span><div class="slot ${cls}">${txt}</div></div>`;
+  }).join("");
+  const dots = w => tasks.filter(t => t.where === w).map(t => `<i title="task ${t.id}"></i>`).join("");
+  $("q").innerHTML = dots("queue"); $("p").innerHTML = dots("parked"); $("d").innerHTML = dots("done");
+  const busy = carriers.filter(t => t && t.phase !== 1).length;
+  $("stats").innerHTML = `<span>tick<b>${tick}</b></span><span>mode<b>${label[mode]}</b></span><span>carriers doing CPU work<b>${busy} / ${CARRIERS}</b></span><span>done<b>${tasks.filter(t=>t.phase===3).length} / ${tasks.length}</b></span>`;
+}
+function renderBars(){
+  const max = Math.max(...results.map(r => r.ticks));
+  $("bars").innerHTML = results.slice(-6).map(r => `<div class="bar"><span>${label[r.mode]}</span><div><i style="width:${100 * r.ticks / max}%"></i></div><span>${r.ticks} ticks</span></div>`).join("") + `<p class="muted">${results.at(-1).n} tasks, ${results.at(-1).io} I/O ticks each.</p>`;
+}
+function stop(){ clearInterval(timer); timer = null; }
+function run(){ if(tasks.every(t => t.phase === 3)) reset(); stop(); timer = setInterval(step, matchMedia("(prefers-reduced-motion: reduce)").matches ? 900 : 350); }
+["plat","virt","pin"].forEach(m => $("m-" + m).onclick = () => { mode = m; document.querySelectorAll("[id^=m-]").forEach(b => b.classList.toggle("on", b.id === "m-" + m)); reset(); });
+$("run").onclick = run; $("step").onclick = () => { stop(); if(tasks.every(t => t.phase === 3)) reset(); step(); }; $("reset").onclick = reset;
+reset();
+</script>
+</body>
+</html>

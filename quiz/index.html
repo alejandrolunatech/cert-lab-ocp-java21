@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Exam Trainer</title>
+<style>
+/* Offline quiz and mock-exam runner. Reads window.QUIZ from questions.js next to this file. Works from file:// with no server. */
+:root{
+  --bg:#0d1117; --panel:#151c26; --line:#263243; --fg:#e4e9f0; --muted:#8d9bb0;
+  --accent:#4cc2e0; --amber:#f0b45a; --good:#5fcf96; --bad:#e2766b; --track:#1d2633;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: light){:root{
+  --bg:#f5f7fa; --panel:#fff; --line:#d7dee8; --fg:#131a24; --muted:#56637a;
+  --accent:#0a7fa0; --amber:#a8620b; --good:#1d8a55; --bad:#b4433a; --track:#e6ebf2; color-scheme:light}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 var(--sans)}
+.wrap{max-width:860px;margin:0 auto;padding:28px 16px 64px;display:grid;gap:20px}
+h1,h2{margin:0;line-height:1.25}
+h1{font-size:26px} h2{font-size:18px}
+.muted{color:var(--muted)}
+.eyebrow{font:500 12px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;display:grid;gap:14px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+button,select{font:inherit;color:var(--fg);background:var(--track);border:1px solid var(--line);border-radius:8px;padding:8px 14px;cursor:pointer}
+button.primary{background:var(--accent);color:#0d1117;border-color:var(--accent);font-weight:600}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,select:focus-visible,label:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.dom{display:grid;grid-template-columns:minmax(0,1fr) 120px 48px;gap:10px;align-items:center;font-size:14px}
+.bar{height:10px;background:var(--track);border-radius:4px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent)}
+.num{font:500 13px var(--mono);text-align:right;font-variant-numeric:tabular-nums}
+pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;overflow-x:auto;font:13px/1.5 var(--mono);margin:0}
+.q{font-size:16px;white-space:pre-wrap}
+.opts{display:grid;gap:8px}
+.opt{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:8px;cursor:pointer}
+.opt input{margin-top:4px}
+.opt.right{border-color:var(--good);background:color-mix(in srgb,var(--good) 12%,transparent)}
+.opt.wrong{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 12%,transparent)}
+.opt code,.explain code{font-family:var(--mono);font-size:13px}
+.explain{border-left:3px solid var(--amber);padding:8px 12px;white-space:pre-wrap}
+.timer{font:600 20px var(--mono);font-variant-numeric:tabular-nums}
+.grid{display:flex;flex-wrap:wrap;gap:6px}
+.grid button{width:38px;padding:6px 0;font:500 12px var(--mono)}
+.grid button.done{background:color-mix(in srgb,var(--accent) 25%,var(--track))}
+.grid button.flag{border-color:var(--amber);color:var(--amber)}
+.grid button.cur{outline:2px solid var(--fg)}
+.pass{color:var(--good)} .fail{color:var(--bad)}
+.tag{font:500 11px var(--mono);color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="questions.js"></script>
+<script>
+(function(){
+const Q = window.QUIZ;
+const app = document.getElementById("app");
+if(!Q){app.innerHTML='<p>questions.js did not load. Keep it in the same folder as this page.</p>';return;}
+const KEY = "cert-lab:" + Q.exam;
+const store = {
+  get(){ try{ return JSON.parse(localStorage.getItem(KEY)) || {seen:{}, history:[]}; }catch(e){ return {seen:{}, history:[]}; } },
+  set(v){ try{ localStorage.setItem(KEY, JSON.stringify(v)); }catch(e){} }
+};
+let S = store.get();
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt = s => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>");
+const shuffle = a => { a = a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
+const domName = id => (Q.domains.find(d => d.id === id) || {name:id}).name;
+const same = (a,b) => a.length === b.length && a.every(x => b.includes(x));
+
+function record(q, ok){
+  const r = S.seen[q.id] || {right:0, wrong:0, last:null};
+  ok ? r.right++ : r.wrong++; r.last = ok; S.seen[q.id] = r; store.set(S);
+}
+function domainStats(){
+  return Q.domains.map(d => {
+    const qs = Q.questions.filter(q => q.domain === d.id);
+    let r=0, w=0, seen=0;
+    qs.forEach(q => { const s = S.seen[q.id]; if(s){ seen++; r+=s.right; w+=s.wrong; } });
+    return {d, total:qs.length, seen, acc: r+w ? Math.round(100*r/(r+w)) : null};
+  });
+}
+
+function home(){
+  const st = domainStats();
+  const weak = Q.questions.filter(q => S.seen[q.id] && S.seen[q.id].last === false);
+  const last = S.history.slice(-5).reverse();
+  app.innerHTML = `
+  <header><div class="eyebrow">${esc(Q.exam)} · offline trainer</div><h1>${esc(Q.title)}</h1>
+  <p class="muted">${Q.questions.length} questions written for this repo. Practice shows the explanation after each answer. The mock exam is timed and scored like the real one (${Q.mock.count} questions, ${Q.mock.minutes} min, pass at ${Q.mock.pass}%).</p></header>
+  <section class="panel"><h2>Your accuracy by exam domain</h2>
+  ${st.map(s => `<div class="dom"><div>${esc(s.d.name)} <span class="tag">${s.d.weight}% of exam · ${s.seen}/${s.total} seen</span></div>
+    <div class="bar"><i style="width:${s.acc ?? 0}%;background:${s.acc===null?'var(--track)':s.acc>=75?'var(--good)':s.acc>=60?'var(--amber)':'var(--bad)'}"></i></div>
+    <div class="num">${s.acc===null?'–':s.acc+'%'}</div></div>`).join("")}
+  </section>
+  <section class="panel"><h2>Practice</h2>
+    <div class="row">
+      <label for="dsel" class="muted">Domain</label>
+      <select id="dsel"><option value="">All domains</option>${Q.domains.map(d=>`<option value="${esc(d.id)}">${esc(d.name)}</option>`).join("")}</select>
+      <button class="primary" id="go-practice">Practise 10</button>
+      <button id="go-weak" ${weak.length?'':'disabled'}>Retry my ${weak.length} wrong answers</button>
+    </div>
+  </section>
+  <section class="panel"><h2>Mock exam</h2>
+    <p class="muted">Questions are drawn by domain weight. You can flag and come back. Nothing is shown until you submit.</p>
+    <div class="row"><button class="primary" id="go-mock">Start mock exam</button>
+    <button id="reset">Reset my progress</button></div>
+    ${last.length?`<div class="tag">Last mocks: ${last.map(h=>`${h.date} ${h.score}%`).join(" · ")}</div>`:""}
+  </section>`;
+  document.getElementById("go-practice").onclick = () => {
+    const d = document.getElementById("dsel").value;
+    const pool = Q.questions.filter(q => !d || q.domain === d);
+    // unseen first, then the rest
+    const unseen = shuffle(pool.filter(q => !S.seen[q.id])), rest = shuffle(pool.filter(q => S.seen[q.id]));
+    practice(unseen.concat(rest).slice(0,10));
+  };
+  document.getElementById("go-weak").onclick = () => practice(shuffle(weak));
+  document.getElementById("go-mock").onclick = startMock;
+  document.getElementById("reset").onclick = function(){
+    if(this.dataset.armed){ S = {seen:{}, history:[]}; store.set(S); home(); }
+    else { this.dataset.armed = 1; this.textContent = "Click again to erase"; }
+  };
+}
+
+function optsHtml(q, order, name, chosen){
+  const multi = q.answer.length > 1;
+  return `<div class="opts">${order.map(i => `<label class="opt" data-i="${i}"><input type="${multi?'checkbox':'radio'}" name="${name}" value="${i}" ${chosen.includes(i)?'checked':''}><span>${fmt(q.options[i])}</span></label>`).join("")}</div>`;
+}
+function qHtml(q){
+  return `<div class="tag">${esc(domName(q.domain))}${q.answer.length>1?` · choose ${q.answer.length}`:''}</div>
+  <div class="q">${fmt(q.q)}</div>${q.code?`<pre>${esc(q.code)}</pre>`:''}`;
+}
+const picked = () => [...app.querySelectorAll(".opts input:checked")].map(i => +i.value);
+
+function practice(list){
+  let i = 0, right = 0;
+  function show(){
+    if(i >= list.length){
+      app.innerHTML = `<section class="panel"><h2>Done: ${right} of ${list.length} right</h2><div class="row"><button class="primary" id="back">Back</button></div></section>`;
+      document.getElementById("back").onclick = home; return;
+    }
+    const q = list[i], order = shuffle(q.options.map((_,k)=>k));
+    app.innerHTML = `<div class="row"><button id="back">← Back</button><span class="tag">Question ${i+1} of ${list.length} · ${right} right</span></div>
+    <section class="panel">${qHtml(q)}${optsHtml(q, order, "p", [])}
+    <div class="row"><button class="primary" id="check">Check</button></div><div id="fb"></div></section>`;
+    document.getElementById("back").onclick = home;
+    document.getElementById("check").onclick = function(){
+      const p = picked(); if(!p.length) return;
+      const ok = same(p, q.answer); if(ok) right++; record(q, ok);
+      app.querySelectorAll(".opt").forEach(el => { const k = +el.dataset.i; if(q.answer.includes(k)) el.classList.add("right"); else if(p.includes(k)) el.classList.add("wrong"); });
+      document.getElementById("fb").innerHTML = `<p class="${ok?'pass':'fail'}"><b>${ok?'Correct':'Not quite'}</b></p><div class="explain">${fmt(q.explain)}</div>`;
+      this.textContent = "Next"; this.onclick = () => { i++; show(); };
+    };
+  }
+  show();
+}
+
+function startMock(){
+  // pick questions per domain weight
+  const n = Math.min(Q.mock.count, Q.questions.length);
+  let picks = [];
+  Q.domains.forEach(d => {
+    const want = Math.round(n * d.weight / 100);
+    picks = picks.concat(shuffle(Q.questions.filter(q => q.domain === d.id)).slice(0, want));
+  });
+  const left = shuffle(Q.questions.filter(q => !picks.includes(q)));
+  while(picks.length < n && left.length) picks.push(left.pop());
+  picks = shuffle(picks.slice(0, n));
+  const M = {qs:picks, orders:picks.map(q => shuffle(q.options.map((_,k)=>k))), ans:picks.map(()=>[]), flags:picks.map(()=>false), i:0, end:Date.now()+Q.mock.minutes*60000};
+  const tick = setInterval(() => { const el = document.getElementById("timer"); if(!el){clearInterval(tick);return;} const ms = M.end-Date.now(); if(ms<=0){clearInterval(tick); finish(M);} else el.textContent = clock(ms); }, 1000);
+  M.tick = tick; mockShow(M);
+}
+const clock = ms => { const s=Math.max(0,Math.floor(ms/1000)); return `${Math.floor(s/3600)}:${String(Math.floor(s%3600/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`; };
+function mockShow(M){
+  const q = M.qs[M.i];
+  app.innerHTML = `<div class="row" style="justify-content:space-between"><span class="timer" id="timer">${clock(M.end-Date.now())}</span><button id="submit">Submit exam</button></div>
+  <div class="grid">${M.qs.map((_,k)=>`<button data-k="${k}" class="${M.ans[k].length?'done':''} ${M.flags[k]?'flag':''} ${k===M.i?'cur':''}">${k+1}</button>`).join("")}</div>
+  <section class="panel">${qHtml(q)}${optsHtml(q, M.orders[M.i], "m", M.ans[M.i])}
+  <div class="row"><button id="prev" ${M.i?'':'disabled'}>Previous</button><button id="flag">${M.flags[M.i]?'Unflag':'Flag for review'}</button><button class="primary" id="next">${M.i<M.qs.length-1?'Next':'Review grid'}</button></div></section>`;
+  const save = () => { M.ans[M.i] = picked(); };
+  app.querySelectorAll(".grid button").forEach(b => b.onclick = () => { save(); M.i = +b.dataset.k; mockShow(M); });
+  document.getElementById("prev").onclick = () => { save(); M.i--; mockShow(M); };
+  document.getElementById("next").onclick = () => { save(); if(M.i<M.qs.length-1) M.i++; mockShow(M); };
+  document.getElementById("flag").onclick = () => { save(); M.flags[M.i] = !M.flags[M.i]; mockShow(M); };
+  document.getElementById("submit").onclick = function(){
+    save(); const open = M.ans.filter(a=>!a.length).length;
+    if(open && !this.dataset.armed){ this.dataset.armed=1; this.textContent=`${open} unanswered. Submit anyway?`; return; }
+    finish(M);
+  };
+}
+function finish(M){
+  clearInterval(M.tick);
+  const res = M.qs.map((q,k) => same(M.ans[k], q.answer));
+  M.qs.forEach((q,k) => record(q, res[k]));
+  const score = Math.round(100 * res.filter(Boolean).length / res.length);
+  S.history.push({date:new Date().toISOString().slice(0,10), score}); store.set(S);
+  const byDom = Q.domains.map(d => { const ks = M.qs.map((q,k)=>q.domain===d.id?k:-1).filter(k=>k>=0); const r = ks.filter(k=>res[k]).length; return {d, n:ks.length, r}; }).filter(x=>x.n);
+  app.innerHTML = `<section class="panel"><div class="eyebrow">Mock result</div>
+  <h1 class="${score>=Q.mock.pass?'pass':'fail'}">${score}% · ${score>=Q.mock.pass?'PASS':'NOT YET'}</h1>
+  <p class="muted">Pass mark ${Q.mock.pass}%. Book the real exam after two mocks at 80% or more.</p>
+  ${byDom.map(x=>`<div class="dom"><div>${esc(x.d.name)}</div><div class="bar"><i style="width:${100*x.r/x.n}%;background:${x.r/x.n>=.75?'var(--good)':x.r/x.n>=.6?'var(--amber)':'var(--bad)'}"></i></div><div class="num">${x.r}/${x.n}</div></div>`).join("")}
+  <div class="row"><button class="primary" id="back">Back to start</button></div></section>
+  <h2>Review</h2>
+  ${M.qs.map((q,k)=>`<section class="panel"><div class="tag">${k+1} · ${res[k]?'<span class="pass">right</span>':'<span class="fail">wrong</span>'}</div>${qHtml(q)}
+    <div class="opts">${q.options.map((o,j)=>`<div class="opt ${q.answer.includes(j)?'right':M.ans[k].includes(j)?'wrong':''}">${fmt(o)}</div>`).join("")}</div>
+    <div class="explain">${fmt(q.explain)}</div></section>`).join("")}`;
+  document.getElementById("back").onclick = home;
+  window.scrollTo(0,0);
+}
+home();
+})();
+</script>
+</body>
+</html>
